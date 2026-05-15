@@ -128,26 +128,41 @@ export default function App() {
         backgroundColor: '#ffffff',
         logging: false,
         onclone: (clonedDoc) => {
-          // Limpeza profunda de propriedades não suportadas que causam o erro 'oklch'
-          const elements = clonedDoc.querySelectorAll('*');
-          elements.forEach((node) => {
-            const el = node as HTMLElement;
-            const style = window.getComputedStyle(el);
+          // REMOÇÃO AGRESSIVA DE OKLCH (Padrão Tailwind 4 não suportado pelo html2canvas)
+          const allElements = clonedDoc.querySelectorAll('*');
+          allElements.forEach((el) => {
+            const element = el as HTMLElement;
+            const style = window.getComputedStyle(element);
             
-            // Sanitização de cores: html2canvas v1.4.1 não suporta oklch (padrão do Tailwind 4)
-            if (el.style.backgroundColor?.includes('oklch') || style.backgroundColor.includes('oklch')) {
-              el.style.backgroundColor = '#ffffff'; 
+            // Se a cor do texto ou fundo for oklch, resetamos para valores seguros (Preto/Branco)
+            // O html2canvas falha ao tentar dar "parse" nestas strings de cor
+            if (style.backgroundColor && style.backgroundColor.includes('oklch')) {
+              element.style.backgroundColor = '#ffffff';
             }
-            if (el.style.color?.includes('oklch') || style.color.includes('oklch')) {
-              el.style.color = '#000000';
+            if (style.color && style.color.includes('oklch')) {
+              element.style.color = '#000000';
             }
+            if (style.borderColor && style.borderColor.includes('oklch')) {
+              element.style.borderColor = '#000000';
+            }
+
+            // Remove variáveis de CSS modernas que o html2canvas não entende
+            element.style.setProperty('--tw-shadow', 'none');
+            element.style.setProperty('--tw-ring-color', 'transparent');
             
-            // Remove efeitos modernos que podem travar a renderização ou o clone
-            el.style.backdropFilter = 'none';
-            el.style.filter = 'none';
-            el.style.transition = 'none';
-            el.style.animation = 'none';
+            // Remove filtros e efeitos que causam lentidão ou erros no clone
+            element.style.backdropFilter = 'none';
+            element.style.filter = 'none';
+            element.style.transition = 'none';
           });
+
+          // Injetar um estilo reset no documento clonado para garantir compatibilidade
+          const styleTag = clonedDoc.createElement('style');
+          styleTag.innerHTML = `
+            * { oklch: none !important; color-scheme: light !important; }
+            body { background: white !important; }
+          `;
+          clonedDoc.head.appendChild(styleTag);
         }
       });
 
