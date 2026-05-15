@@ -42,7 +42,7 @@ interface UH {
 }
 
 const INITIAL_UH_LIST = [
-  '034', '059', '069', '061', '073', '087', '094', '104', '153', '154', '155', '156', '157', 
+  '34', '59', '69', '61', '73', '87', '94', '104', '153', '154', '155', '156', '157', 
   '158', '159', '160', '161', '162', '163', '164', '166', '168', '170', '167', '171', '172'
 ];
 
@@ -50,12 +50,15 @@ export default function App() {
   const [uhs, setUhs] = useState<UH[]>([]);
   const [editingUh, setEditingUh] = useState<UH | null>(null);
   const [newUhId, setNewUhId] = useState('');
+  const [receptionist, setReceptionist] = useState('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Efeito para carregar dados
   useEffect(() => {
     const saved = localStorage.getItem('chaves_uh_data_v3');
+    const savedReceptionist = localStorage.getItem('receptionist_name');
+    
     if (saved) {
       setUhs(JSON.parse(saved));
     } else {
@@ -67,6 +70,10 @@ export default function App() {
       }));
       setUhs(initial);
     }
+
+    if (savedReceptionist) {
+      setReceptionist(savedReceptionist);
+    }
   }, []);
 
   useEffect(() => {
@@ -75,17 +82,22 @@ export default function App() {
     }
   }, [uhs]);
 
+  useEffect(() => {
+    localStorage.setItem('receptionist_name', receptionist);
+  }, [receptionist]);
+
   const addUh = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUhId.trim()) return;
+    const cleanId = newUhId.trim().replace(/^0+/, '') || '0';
+    if (!cleanId) return;
     
-    if (uhs.find(u => u.id === newUhId.trim())) {
+    if (uhs.find(u => u.id === cleanId)) {
       alert("Esta UH já existe na grade!");
       return;
     }
 
     const newUh: UH = {
-      id: newUhId.trim(),
+      id: cleanId,
       status: UHStatus.DISPONIVEL,
       saidaHoje: false,
       reservaHoje: false
@@ -172,11 +184,11 @@ export default function App() {
               justify-content: center !important;
               font-size: 16px !important;
               font-weight: 900 !important;
-              color: #000000 !important;
+              color: #ffffff !important;
               z-index: 10 !important;
               line-height: 1 !important;
               padding: 0 !important;
-              text-shadow: 2px 2px 0px #fff, -1px -1px 0px #fff !important;
+              text-shadow: 1px 1px 2px #000, -1px -1px 0px #000 !important;
             }
             .marker-r span {
               display: block !important;
@@ -198,13 +210,13 @@ export default function App() {
               align-items: center !important;
               justify-content: center !important;
               z-index: 10 !important;
-              color: #000000 !important;
+              color: #ffffff !important;
               font-family: Arial, sans-serif !important;
               font-weight: 900 !important;
               font-size: 16px !important;
               line-height: 1 !important;
               padding: 0 !important;
-              text-shadow: 1px 1px 1px #000, -2px -2px 0px #fff, 2px 2px 0px #fff !important;
+              text-shadow: 1px 1px 2px #000, -1px -1px 0px #000 !important;
             }
             .marker-s span {
               display: block !important;
@@ -215,15 +227,16 @@ export default function App() {
             }
             /* Utilitário para a Legenda no PDF */
             .pdf-legend {
-              margin-top: 30px !important;
-              padding-top: 15px !important;
-              border-top: 2px solid #000 !important;
+              grid-column: 1 / -1 !important;
+              margin-top: 40px !important;
+              padding-top: 25px !important;
+              border-top: 3px solid #000 !important;
               display: flex !important;
               flex-wrap: wrap !important;
               justify-content: center !important;
-              gap: 25px !important;
+              gap: 30px !important;
               width: 100% !important;
-              padding-bottom: 20px !important;
+              padding-bottom: 30px !important;
             }
             .legend-item {
               display: flex !important;
@@ -242,20 +255,38 @@ export default function App() {
           `;
           clonedDoc.head.appendChild(safeStyle);
 
-          // 2. INJETA LEGENDA ABAIXO DA GRADE
+          // 2. INJETA LEGENDA NA GRADE (Como item de grid ocupando largura total)
           const grid = clonedDoc.querySelector('.grid');
           if (grid) {
             const legend = clonedDoc.createElement('div');
             legend.className = 'pdf-legend';
             legend.innerHTML = `
-              <div class="legend-item"><div class="legend-box" style="background:#e74c3c"></div> Ocupado</div>
-              <div class="legend-item"><div class="legend-box" style="background:#f1c40f"></div> Limpeza</div>
-              <div class="legend-item"><div class="legend-box" style="background:#3498db"></div> Manutenção</div>
-              <div class="legend-item"><div class="legend-box" style="background:#ffffff"></div> Disponível</div>
-              <div class="legend-item" style="margin-left: 20px"><span style="color:#000000; font-size:16px; font-weight:900">R</span> Reserva/Entrada</div>
-              <div class="legend-item"><span style="color:#000000; font-size:16px; font-weight:900; text-shadow: 1px 1px 1px #000">S</span> Saída/Checkout</div>
+              <div class="legend-item">
+                <div class="legend-box" style="background:#e74c3c"></div>
+                <span>Ocupado</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-box" style="background:#f1c40f"></div>
+                <span>Limpeza</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-box" style="background:#3498db"></div>
+                <span>Manutenção</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-box" style="background:#ffffff"></div>
+                <span>Disponível</span>
+              </div>
+              <div class="legend-item" style="margin-left: 20px">
+                <span style="color:#ffffff; font-size:18px; font-weight:900; text-shadow: 1px 1px 2px #000">R</span>
+                <span>Reserva/Entrada</span>
+              </div>
+              <div class="legend-item">
+                <span style="color:#ffffff; font-size:18px; font-weight:900; text-shadow: 1px 1px 2px #000">S</span>
+                <span>Saída/Checkout</span>
+              </div>
             `;
-            grid.parentNode?.appendChild(legend);
+            grid.appendChild(legend);
           }
 
           // 3. HIGIENIZAÇÃO MANUAL PARA SEGURANÇA ADICIONAL
@@ -298,7 +329,7 @@ export default function App() {
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'normal');
       const dataAtual = new Date().toLocaleDateString('pt-BR');
-      pdf.text(`TURNO: DIURNO`, 10, 32);
+      pdf.text(`REPC:(A): ${receptionist.toUpperCase() || '___________________'}`, 10, 32);
       pdf.text(`DATA: ${dataAtual}`, pageWidth - 10, 32, { align: 'right' });
 
       // Desenha a imagem da grade
@@ -386,9 +417,18 @@ export default function App() {
             <h1 className="text-2xl font-black tracking-tighter uppercase">Painel de Controle</h1>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-14 text-sm font-bold text-gray-400 mb-8">
-            <span className="flex items-center gap-2 uppercase tracking-widest"><Clock size={16} /> Turno: Diurno</span>
-            <span className="flex items-center gap-2 uppercase tracking-widest leading-none">Data: {new Date().toLocaleDateString('pt-BR')}</span>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-sm font-bold text-gray-400 mb-8 max-w-xl mx-auto">
+            <div className="flex items-center gap-2 bg-gray-50 border-2 border-gray-200 px-4 py-2 rounded-xl focus-within:border-black transition-all flex-1 w-full sm:w-auto">
+              <Clock size={16} className="text-gray-400" />
+              <input 
+                type="text"
+                value={receptionist}
+                onChange={(e) => setReceptionist(e.target.value)}
+                placeholder="NOME DO RECEPCIONISTA"
+                className="bg-transparent border-none focus:outline-none text-xs font-black uppercase tracking-widest text-black placeholder:text-gray-300 w-full"
+              />
+            </div>
+            <span className="flex items-center gap-2 uppercase tracking-widest leading-none bg-gray-50 px-4 py-3 rounded-xl border-2 border-gray-100">Data: {new Date().toLocaleDateString('pt-BR')}</span>
           </div>
 
           {/* NOVO: Formulário para adicionar UH */}
@@ -427,18 +467,18 @@ export default function App() {
               <div className="absolute inset-0 opacity-0 group-hover:opacity-10 bg-white transition-opacity" />
               
               <span className={`text-2xl sm:text-3xl font-black z-10 ${uh.status === UHStatus.OCUPADO || uh.status === UHStatus.MANUTENCAO ? 'text-white' : 'text-black'}`}>
-                {uh.id}
+                {uh.id.replace(/^0+/, '')}
               </span>
               
               {/* Marcadores S (Canto Inferior Direito) e R (Canto Superior Esquerdo) */}
               <div className="absolute inset-1.5 pointer-events-none z-20">
                 {uh.reservaHoje && (
-                  <div className="absolute top-0 left-0 text-black text-base font-black flex items-center justify-center filter drop-shadow-[1px_1px_0px_white]" title="Reserva (Entrada)">
+                  <div className="absolute top-0 left-0 text-white text-base font-black flex items-center justify-center filter drop-shadow-[1px_1px_1px_rgba(0,0,0,0.8)]" title="Reserva (Entrada)">
                     <span className="leading-none">R</span>
                   </div>
                 )}
                 {uh.saidaHoje && (
-                  <div className="absolute bottom-0 right-0 text-black text-base font-black flex items-center justify-center filter drop-shadow-[1px_1px_0px_white] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.5)]" title="Saída (Checkout)">
+                  <div className="absolute bottom-0 right-0 text-white text-base font-black flex items-center justify-center filter drop-shadow-[1px_1px_1px_rgba(0,0,0,0.8)]" title="Saída (Checkout)">
                     <span className="leading-none">S</span>
                   </div>
                 )}
@@ -491,7 +531,7 @@ export default function App() {
             >
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-5xl font-black tracking-tighter text-gray-900 leading-none">UH {editingUh.id}</h2>
+                  <h2 className="text-5xl font-black tracking-tighter text-gray-900 leading-none">UH {editingUh.id.replace(/^0+/, '')}</h2>
                   <p className="text-[10px] font-black text-red-500 mt-2 uppercase tracking-widest bg-red-50 inline-block px-2 py-1 rounded">Selecione o Novo Status</p>
                 </div>
                 <button 
