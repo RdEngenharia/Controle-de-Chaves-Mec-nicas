@@ -1,0 +1,6 @@
+{
+  "name": "Controle de Chaves Mecânicas",
+  "description": "Aplicação profissional para gestão de chaves em condomínios e hotéis, com status colorido, marcadores de entrada/saída e exportação para PDF.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
