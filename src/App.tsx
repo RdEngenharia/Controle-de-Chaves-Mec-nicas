@@ -175,6 +175,14 @@ export default function App() {
               font-weight: 900 !important;
               color: #1d4ed8 !important;
               z-index: 10 !important;
+              line-height: 0 !important;
+              padding: 0 !important;
+            }
+            .marker-r span {
+              display: block !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              line-height: 1 !important;
             }
             /* Marcador Saída (S) - Círculo Amarelo */
             .marker-s {
@@ -194,11 +202,14 @@ export default function App() {
               font-family: Arial, sans-serif !important;
               font-weight: 900 !important;
               font-size: 15px !important;
-              line-height: 1 !important;
+              line-height: 0 !important;
+              padding: 0 !important;
             }
             .marker-s span {
               display: block !important;
-              margin-top: 1px !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              line-height: 1 !important;
             }
           `;
           clonedDoc.head.appendChild(safeStyle);
@@ -379,12 +390,12 @@ export default function App() {
               <div className="absolute inset-1.5 pointer-events-none z-20">
                 {uh.reservaHoje && (
                   <div className="marker-r absolute top-0 left-0 w-8 h-8 bg-white text-blue-700 text-[10px] font-black flex items-center justify-center rounded-full border-[3px] border-blue-700 shadow-md transform -translate-x-1 -translate-y-1" title="Reserva (Entrada)">
-                    R
+                    <span className="leading-none">R</span>
                   </div>
                 )}
                 {uh.saidaHoje && (
                   <div className="marker-s absolute bottom-0 right-0 w-8 h-8 bg-yellow-400 text-black text-xs font-black flex items-center justify-center rounded-full border-2 border-black shadow-md transform translate-x-1 translate-y-1" title="Saída (Checkout)">
-                    <span className="leading-none mt-0.5">S</span>
+                    <span className="leading-none">S</span>
                   </div>
                 )}
               </div>
@@ -559,7 +570,7 @@ function MarkerBtn({ label, symbol, active, color, onClick }: any) {
     >
       <span className="text-xs font-black uppercase tracking-tighter">{label}</span>
       <div className={`w-9 h-9 flex items-center justify-center font-black border-2 border-black text-sm ${color} ${active ? 'opacity-100' : 'opacity-20'}`}>
-        {symbol}
+        <span className="leading-none">{symbol}</span>
       </div>
     </button>
   );
