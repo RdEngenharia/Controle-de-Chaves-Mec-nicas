@@ -128,41 +128,53 @@ export default function App() {
         backgroundColor: '#ffffff',
         logging: false,
         onclone: (clonedDoc) => {
-          // REMOÇÃO AGRESSIVA DE OKLCH (Padrão Tailwind 4 não suportado pelo html2canvas)
+          // 1. INJETA CSS PARA FORÇAR COMPATIBILIDADE NO CLONE
+          const safeStyle = clonedDoc.createElement('style');
+          safeStyle.innerHTML = `
+            * { 
+              box-sizing: border-box !important;
+              font-family: Arial, sans-serif !important;
+              color-scheme: light !important;
+            }
+            body { background: white !important; }
+            .grid { 
+              display: grid !important; 
+              grid-template-columns: repeat(4, 1fr) !important; 
+              gap: 15px !important; 
+            }
+            .uh-card {
+              border: 1px solid #000000 !important;
+              border-radius: 8px !important;
+              box-shadow: none !important;
+            }
+            /* Garante que SVGs herdem cores sólidas */
+            svg { color: black !important; fill: none !important; }
+          `;
+          clonedDoc.head.appendChild(safeStyle);
+
+          // 2. HIGIENIZAÇÃO MANUAL PARA SEGURANÇA ADICIONAL
           const allElements = clonedDoc.querySelectorAll('*');
           allElements.forEach((el) => {
-            const element = el as HTMLElement;
-            const style = window.getComputedStyle(element);
+            const node = el as HTMLElement;
             
-            // Se a cor do texto ou fundo for oklch, resetamos para valores seguros (Preto/Branco)
-            // O html2canvas falha ao tentar dar "parse" nestas strings de cor
-            if (style.backgroundColor && style.backgroundColor.includes('oklch')) {
-              element.style.backgroundColor = '#ffffff';
-            }
-            if (style.color && style.color.includes('oklch')) {
-              element.style.color = '#000000';
-            }
-            if (style.borderColor && style.borderColor.includes('oklch')) {
-              element.style.borderColor = '#000000';
-            }
+            // Remove efeitos que o html2canvas não renderiza
+            node.style.backdropFilter = 'none';
+            node.style.filter = 'none';
+            node.style.transition = 'none';
+            node.style.animation = 'none';
 
-            // Remove variáveis de CSS modernas que o html2canvas não entende
-            element.style.setProperty('--tw-shadow', 'none');
-            element.style.setProperty('--tw-ring-color', 'transparent');
-            
-            // Remove filtros e efeitos que causam lentidão ou erros no clone
-            element.style.backdropFilter = 'none';
-            element.style.filter = 'none';
-            element.style.transition = 'none';
+            // Correção específica para SVGs e seus filhos (onde o erro ocorria)
+            if (node.tagName.toLowerCase() === 'svg' || node.ownerSVGElement) {
+              const stroke = node.getAttribute('stroke');
+              const fill = node.getAttribute('fill');
+              
+              if (stroke && stroke.includes('oklch')) node.setAttribute('stroke', '#000000');
+              if (fill && fill.includes('oklch')) node.setAttribute('fill', 'none');
+              
+              // Remove filtros de SVG
+              node.removeAttribute('filter');
+            }
           });
-
-          // Injetar um estilo reset no documento clonado para garantir compatibilidade
-          const styleTag = clonedDoc.createElement('style');
-          styleTag.innerHTML = `
-            * { oklch: none !important; color-scheme: light !important; }
-            body { background: white !important; }
-          `;
-          clonedDoc.head.appendChild(styleTag);
         }
       });
 
