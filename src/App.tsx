@@ -115,22 +115,46 @@ export default function App() {
     if (!gridRef.current || isGeneratingPDF) return;
 
     setIsGeneratingPDF(true);
-    // Garantir que a página esteja no topo para o html2canvas não capturar com offset errado
+    // Garantir que a página esteja no topo
     window.scrollTo(0, 0);
 
     try {
-      // Pequeno atraso para garantir que qualquer animação tenha terminado
       await new Promise(resolve => setTimeout(resolve, 500));
 
       const canvas = await html2canvas(gridRef.current, {
-        scale: 2, // 2 é mais estável para evitar estouro de memória
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
-        windowWidth: gridRef.current.scrollWidth,
-        windowHeight: gridRef.current.scrollHeight,
-        x: 0,
-        y: 0
+        onclone: (clonedDoc) => {
+          // Solução agressiva para 'oklch': substitui qualquer menção a oklch por cores seguras
+          const elements = clonedDoc.getElementsByTagName('*');
+          for (let i = 0; i < elements.length; i++) {
+            const el = elements[i] as HTMLElement;
+            const computed = window.getComputedStyle(el);
+            
+            // html2canvas trava ao encontrar oklch. Vamos sanitizar as propriedades mais comuns.
+            const propsToSanitize = ['backgroundColor', 'color', 'borderColor', 'outlineColor', 'textDecorationColor'];
+            
+            propsToSanitize.forEach(prop => {
+              const val = (computed as any)[prop];
+              if (val && val.includes('oklch')) {
+                // Se for um card e soubermos a cor, aplicamos o HEX correto
+                if (el.id && el.id.startsWith('uh-card-')) {
+                  // O background já é definido inline no App.tsx via style={{ backgroundColor: ... }}
+                  // o que geralmente evita o oklch, mas o computed pode trazer o do CSS
+                } else {
+                  // Fallback para cores neutras se não for um card
+                  (el.style as any)[prop] = prop === 'backgroundColor' ? '#ffffff' : '#000000';
+                }
+              }
+            });
+            
+            // Remove efeitos modernos que o html2canvas não renderiza bem
+            if (el.style.backdropFilter) el.style.backdropFilter = 'none';
+            if (el.style.filter) el.style.filter = 'none';
+          }
+        }
       });
 
       const imgData = canvas.toDataURL('image/png');
