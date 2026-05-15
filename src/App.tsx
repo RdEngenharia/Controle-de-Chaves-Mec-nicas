@@ -139,16 +139,23 @@ export default function App() {
             body { background: white !important; }
             .grid { 
               display: grid !important; 
-              grid-template-columns: repeat(4, 1fr) !important; 
-              gap: 15px !important; 
+              grid-template-columns: repeat(7, 1fr) !important; 
+              gap: 8px !important; 
+              width: 100% !important;
             }
             .uh-card {
               border: 1px solid #000000 !important;
-              border-radius: 8px !important;
+              border-radius: 4px !important;
               box-shadow: none !important;
+              padding: 5px !important;
+              aspect-ratio: 1/1 !important;
+              position: relative !important;
             }
-            /* Garante que SVGs herdem cores sólidas */
-            svg { color: black !important; fill: none !important; }
+            .uh-card span {
+              font-size: 14px !important;
+            }
+            /* Garante que SVGs herdem cores sólidas e tenham tamanho pequeno */
+            svg { color: black !important; fill: none !important; width: 14px !important; height: 14px !important; }
           `;
           clonedDoc.head.appendChild(safeStyle);
 
