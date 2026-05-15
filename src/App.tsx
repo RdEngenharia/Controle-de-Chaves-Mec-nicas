@@ -49,11 +49,12 @@ const INITIAL_UH_LIST = [
 export default function App() {
   const [uhs, setUhs] = useState<UH[]>([]);
   const [editingUh, setEditingUh] = useState<UH | null>(null);
+  const [newUhId, setNewUhId] = useState('');
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Efeito para carregar dados e escutar redimensionamento
+  // Efeito para carregar dados
   useEffect(() => {
-    const saved = localStorage.getItem('chaves_uh_data_final');
+    const saved = localStorage.getItem('chaves_uh_data_v3');
     if (saved) {
       setUhs(JSON.parse(saved));
     } else {
@@ -69,9 +70,40 @@ export default function App() {
 
   useEffect(() => {
     if (uhs.length > 0) {
-      localStorage.setItem('chaves_uh_data_final', JSON.stringify(uhs));
+      localStorage.setItem('chaves_uh_data_v3', JSON.stringify(uhs));
     }
   }, [uhs]);
+
+  const addUh = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUhId.trim()) return;
+    
+    if (uhs.find(u => u.id === newUhId.trim())) {
+      alert("Esta UH já existe na grade!");
+      return;
+    }
+
+    const newUh: UH = {
+      id: newUhId.trim(),
+      status: UHStatus.DISPONIVEL,
+      saidaHoje: false,
+      reservaHoje: false
+    };
+
+    setUhs(prev => {
+      const updated = [...prev, newUh];
+      // Ordenar numericamente se possível, senão alfabeticamente
+      return updated.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+    });
+    setNewUhId('');
+  };
+
+  const removeUh = (id: string) => {
+    if (confirm(`Tem certeza que deseja remover permanentemente a UH ${id}?`)) {
+      setUhs(prev => prev.filter(u => u.id !== id));
+      setEditingUh(null);
+    }
+  };
 
   const updateUh = (id: string, updates: Partial<UH>) => {
     setUhs(prev => prev.map(uh => uh.id === id ? { ...uh, ...updates } : uh));
@@ -165,46 +197,72 @@ export default function App() {
           <div className="inline-block bg-black text-white px-6 py-2 mb-4">
             <h1 className="text-2xl font-black tracking-tighter uppercase">Painel de Controle</h1>
           </div>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-14 text-sm font-bold text-gray-400">
+          
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-14 text-sm font-bold text-gray-400 mb-8">
             <span className="flex items-center gap-2 uppercase tracking-widest"><Clock size={16} /> Turno: Diurno</span>
             <span className="flex items-center gap-2 uppercase tracking-widest leading-none">Data: {new Date().toLocaleDateString('pt-BR')}</span>
           </div>
+
+          {/* NOVO: Formulário para adicionar UH */}
+          <form onSubmit={addUh} className="flex justify-center gap-2 max-w-sm mx-auto">
+            <input 
+              type="text" 
+              value={newUhId}
+              onChange={(e) => setNewUhId(e.target.value)}
+              placeholder="Número UH (ex: 205)"
+              className="flex-1 bg-white border-2 border-black px-4 py-2 font-bold uppercase placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-red-200 transition-all"
+            />
+            <button 
+              type="submit"
+              className="bg-black text-white px-6 py-2 font-black hover:bg-gray-800 transition-colors"
+            >
+              ADICIONAR
+            </button>
+          </form>
         </header>
 
-        {/* GRADE DE UH - ESTILO QUADRADO (PORTA/JANELA) COM BORDAS PRETAS */}
+        {/* GRADE DE UH - ESTILO MODERNO: QUADRADOS SEPARADOS E FLUTUANTES */}
         <div 
           ref={gridRef}
-          className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-0 border-[2px] border-black bg-black"
+          className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-4 p-8 bg-white rounded-[40px] shadow-2xl border border-gray-100"
         >
           {uhs.map((uh) => (
-            <div
+            <motion.div
               key={uh.id}
+              whileHover={{ y: -5, scale: 1.02 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setEditingUh(uh)}
               style={{ backgroundColor: getStatusColor(uh.status) }}
-              className={`relative cursor-pointer aspect-square flex flex-col items-center justify-center border border-black transition-all hover:brightness-95`}
+              className={`relative cursor-pointer aspect-square flex flex-col items-center justify-center rounded-2xl border-2 border-black transition-all shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] group overflow-hidden`}
               id={`uh-card-${uh.id}`}
             >
-              <span className={`text-2xl sm:text-3xl font-black ${uh.status === UHStatus.OCUPADO || uh.status === UHStatus.MANUTENCAO ? 'text-white' : 'text-black'}`}>
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 bg-white transition-opacity" />
+              
+              <span className={`text-2xl sm:text-3xl font-black z-10 ${uh.status === UHStatus.OCUPADO || uh.status === UHStatus.MANUTENCAO ? 'text-white' : 'text-black'}`}>
                 {uh.id}
               </span>
               
-              {/* Marcadores S e R conforme solicitados */}
-              <div className="absolute top-1 right-1 flex flex-col gap-1 items-end pointer-events-none scale-[0.8] origin-top-right">
+              {/* Marcadores S e R */}
+              <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 items-end pointer-events-none scale-[0.8] origin-top-right z-20">
                 {uh.saidaHoje && (
-                  <div className="relative w-8 h-8 flex items-center justify-center" title="Saída">
-                    <svg viewBox="0 0 24 24" className="absolute inset-0 w-full h-full text-yellow-400 drop-shadow-md">
-                      <path fill="currentColor" stroke="black" strokeWidth="2.5" d="M12 2L2 20h20L12 2z" />
+                  <div className="relative w-8 h-8 flex items-center justify-center drop-shadow-md" title="Saída">
+                    <svg viewBox="0 0 24 24" className="absolute inset-0 w-full h-full text-yellow-400">
+                      <path fill="currentColor" stroke="black" strokeWidth="3" d="M12 2L2 20h20L12 2z" />
                     </svg>
                     <span className="relative z-10 text-[10px] font-black text-black mt-1">S</span>
                   </div>
                 )}
                 {uh.reservaHoje && (
-                  <div className="w-8 h-8 bg-white text-blue-700 text-[10px] font-black flex items-center justify-center rounded-full border-[2.5px] border-blue-700 shadow-md" title="Reserva">
+                  <div className="w-8 h-8 bg-white text-blue-700 text-[10px] font-black flex items-center justify-center rounded-full border-[3px] border-blue-700 shadow-md" title="Reserva">
                     R
                   </div>
                 )}
               </div>
-            </div>
+
+              {/* Detalhe estético: grade discreta no fundo do card */}
+              <div className="absolute inset-0 opacity-10 pointer-events-none" 
+                   style={{backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '10px 10px'}} />
+            </motion.div>
           ))}
         </div>
 
@@ -240,71 +298,82 @@ export default function App() {
               className="fixed inset-0 bg-black/60 backdrop-blur-md z-50"
             />
             <motion.div 
-              initial={{ y: "100%", opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: "100%", opacity: 0 }}
-              className="fixed bottom-0 left-0 right-0 bg-white p-6 rounded-t-[40px] z-[60] shadow-2xl md:max-w-lg md:mx-auto md:relative md:bottom-auto md:mt-20 md:rounded-3xl"
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="fixed inset-0 m-auto w-[95%] max-w-lg h-fit bg-white p-8 rounded-[40px] z-[60] shadow-2xl overflow-y-auto max-h-[90vh] border border-gray-100"
               id="status-modal"
             >
-              <div className="max-w-md mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                  <div>
-                    <h2 className="text-4xl font-black tracking-tight text-gray-900 leading-none">UH {editingUh.id}</h2>
-                    <p className="text-xs font-bold text-gray-400 mt-2 uppercase tracking-widest">Ações da Unidade</p>
-                  </div>
-                  <button onClick={() => setEditingUh(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                    <ChevronDown size={32} className="text-gray-300" />
-                  </button>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-5xl font-black tracking-tighter text-gray-900 leading-none">UH {editingUh.id}</h2>
+                  <p className="text-[10px] font-black text-red-500 mt-2 uppercase tracking-widest bg-red-50 inline-block px-2 py-1 rounded">Selecione o Novo Status</p>
                 </div>
+                <button 
+                  onClick={() => setEditingUh(null)} 
+                  className="p-3 hover:bg-gray-100 rounded-full transition-colors group"
+                >
+                  <ChevronDown size={36} className="text-gray-300 group-hover:text-black transition-colors" />
+                </button>
+              </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-10">
-                  <StatusBtn 
-                    label="OCUPADO" color={COLORS.OCUPADO} 
-                    active={editingUh.status === UHStatus.OCUPADO} 
-                    onClick={() => updateUh(editingUh.id, { status: UHStatus.OCUPADO })} 
-                    icon={<Key size={20} />}
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <StatusBtn 
+                  label="OCUPADO" color={COLORS.OCUPADO} 
+                  active={editingUh.status === UHStatus.OCUPADO} 
+                  onClick={() => updateUh(editingUh.id, { status: UHStatus.OCUPADO })} 
+                  icon={<Key size={24} />}
+                />
+                <StatusBtn 
+                  label="LIMPEZA" color={COLORS.LIMPEZA} 
+                  active={editingUh.status === UHStatus.LIMPEZA} 
+                  onClick={() => updateUh(editingUh.id, { status: UHStatus.LIMPEZA })} 
+                  icon={<Clock size={24} />}
+                />
+                <StatusBtn 
+                  label="MANUTENÇÃO" color={COLORS.MANUTENCAO} 
+                  active={editingUh.status === UHStatus.MANUTENCAO} 
+                  onClick={() => updateUh(editingUh.id, { status: UHStatus.MANUTENCAO })} 
+                  icon={<Wrench size={24} />}
+                />
+                <StatusBtn 
+                  label="DISPONÍVEL" color={COLORS.DISPONIVEL} 
+                  active={editingUh.status === UHStatus.DISPONIVEL} 
+                  border onClick={() => updateUh(editingUh.id, { status: UHStatus.DISPONIVEL })} 
+                  icon={<div className="w-6 h-6 rounded-full border-4 border-current" />}
+                />
+              </div>
+
+              <div className="bg-slate-50 p-6 rounded-[30px] border border-slate-100 mb-8">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 text-center">Filtros de Saída e Reserva</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <MarkerBtn 
+                    label="SAÍDA (S)" symbol="S" 
+                    active={editingUh.saidaHoje} 
+                    color="bg-yellow-400" 
+                    onClick={() => updateUh(editingUh.id, { saidaHoje: !editingUh.saidaHoje })} 
                   />
-                  <StatusBtn 
-                    label="LIMPEZA" color={COLORS.LIMPEZA} 
-                    active={editingUh.status === UHStatus.LIMPEZA} 
-                    onClick={() => updateUh(editingUh.id, { status: UHStatus.LIMPEZA })} 
-                    icon={<Clock size={20} />}
-                  />
-                  <StatusBtn 
-                    label="MANUTENÇÃO" color={COLORS.MANUTENCAO} 
-                    active={editingUh.status === UHStatus.MANUTENCAO} 
-                    onClick={() => updateUh(editingUh.id, { status: UHStatus.MANUTENCAO })} 
-                    icon={<Wrench size={20} />}
-                  />
-                  <StatusBtn 
-                    label="DISPONÍVEL" color={COLORS.DISPONIVEL} 
-                    active={editingUh.status === UHStatus.DISPONIVEL} 
-                    border onClick={() => updateUh(editingUh.id, { status: UHStatus.DISPONIVEL })} 
-                    icon={<div className="w-5 h-5 rounded-full border-2 border-current" />}
+                  <MarkerBtn 
+                    label="RESERVA (R)" symbol="R" 
+                    active={editingUh.reservaHoje} 
+                    color="bg-blue-600 text-white rounded-full" 
+                    onClick={() => updateUh(editingUh.id, { reservaHoje: !editingUh.reservaHoje })} 
                   />
                 </div>
+              </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-black text-gray-300 uppercase tracking-widest ml-2">Marcadores de Campo</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <MarkerBtn 
-                      label="Saída (S)" symbol="S" 
-                      active={editingUh.saidaHoje} 
-                      color="bg-yellow-400" 
-                      onClick={() => updateUh(editingUh.id, { saidaHoje: !editingUh.saidaHoje })} 
-                    />
-                    <MarkerBtn 
-                      label="Reserva (R)" symbol="R" 
-                      active={editingUh.reservaHoje} 
-                      color="bg-blue-600 text-white rounded-full" 
-                      onClick={() => updateUh(editingUh.id, { reservaHoje: !editingUh.reservaHoje })} 
-                    />
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 gap-4">
                 <button 
                   onClick={() => setEditingUh(null)}
-                  className="w-full mt-10 py-5 bg-black text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-gray-900 transition-colors"
+                  className="w-full py-5 bg-black text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-gray-800 transition-all hover:shadow-lg active:scale-95 shadow-black/10"
                 >
-                  Confirmar e Fechar
+                  Confirmar
+                </button>
+                <button 
+                  onClick={() => removeUh(editingUh.id)}
+                  className="w-full py-3 text-[10px] font-black text-gray-300 hover:text-red-500 transition-colors uppercase tracking-widest"
+                >
+                  Remover esta UH da grade
                 </button>
               </div>
             </motion.div>
