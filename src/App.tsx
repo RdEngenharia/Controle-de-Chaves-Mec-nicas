@@ -42,8 +42,8 @@ interface UH {
 }
 
 const INITIAL_UH_LIST = [
-  '034', '059', '060', '061', '065', '068', '069', '070', '080', '085', '090', '095', '100', 
-  '105', '110', '115', '120', '125', '130', '135', '140', '145', '150', '155', '161', '165', '170', '172'
+  '034', '059', '069', '061', '073', '087', '094', '104', '153', '154', '155', '156', '157', 
+  '158', '159', '160', '161', '162', '163', '164', '166', '168', '170', '167', '171', '172'
 ];
 
 export default function App() {
@@ -115,11 +115,12 @@ export default function App() {
     if (!gridRef.current || isGeneratingPDF) return;
 
     setIsGeneratingPDF(true);
-    // Garantir que a página esteja no topo
+    // Garante que a captura comece do topo do elemento
     window.scrollTo(0, 0);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Delay para estabilização de layout antes da captura (importante para mobile)
+      await new Promise(resolve => setTimeout(resolve, 400));
 
       const canvas = await html2canvas(gridRef.current, {
         scale: 2,
@@ -127,33 +128,26 @@ export default function App() {
         backgroundColor: '#ffffff',
         logging: false,
         onclone: (clonedDoc) => {
-          // Solução agressiva para 'oklch': substitui qualquer menção a oklch por cores seguras
-          const elements = clonedDoc.getElementsByTagName('*');
-          for (let i = 0; i < elements.length; i++) {
-            const el = elements[i] as HTMLElement;
-            const computed = window.getComputedStyle(el);
+          // Limpeza profunda de propriedades não suportadas que causam o erro 'oklch'
+          const elements = clonedDoc.querySelectorAll('*');
+          elements.forEach((node) => {
+            const el = node as HTMLElement;
+            const style = window.getComputedStyle(el);
             
-            // html2canvas trava ao encontrar oklch. Vamos sanitizar as propriedades mais comuns.
-            const propsToSanitize = ['backgroundColor', 'color', 'borderColor', 'outlineColor', 'textDecorationColor'];
+            // Sanitização de cores: html2canvas v1.4.1 não suporta oklch (padrão do Tailwind 4)
+            if (el.style.backgroundColor?.includes('oklch') || style.backgroundColor.includes('oklch')) {
+              el.style.backgroundColor = '#ffffff'; 
+            }
+            if (el.style.color?.includes('oklch') || style.color.includes('oklch')) {
+              el.style.color = '#000000';
+            }
             
-            propsToSanitize.forEach(prop => {
-              const val = (computed as any)[prop];
-              if (val && val.includes('oklch')) {
-                // Se for um card e soubermos a cor, aplicamos o HEX correto
-                if (el.id && el.id.startsWith('uh-card-')) {
-                  // O background já é definido inline no App.tsx via style={{ backgroundColor: ... }}
-                  // o que geralmente evita o oklch, mas o computed pode trazer o do CSS
-                } else {
-                  // Fallback para cores neutras se não for um card
-                  (el.style as any)[prop] = prop === 'backgroundColor' ? '#ffffff' : '#000000';
-                }
-              }
-            });
-            
-            // Remove efeitos modernos que o html2canvas não renderiza bem
-            if (el.style.backdropFilter) el.style.backdropFilter = 'none';
-            if (el.style.filter) el.style.filter = 'none';
-          }
+            // Remove efeitos modernos que podem travar a renderização ou o clone
+            el.style.backdropFilter = 'none';
+            el.style.filter = 'none';
+            el.style.transition = 'none';
+            el.style.animation = 'none';
+          });
         }
       });
 
@@ -195,10 +189,36 @@ export default function App() {
         }
       }
 
-      pdf.save(`Controle_Chaves_${dataAtual.replace(/\//g, '-')}.pdf`);
+      // DOWNLOAD SEGURO VIA BLOB (MELHOR PARA MOBILE E CONTRA BLOQUEIO DE POP-UP)
+      const pdfBlob = pdf.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      const fileName = `Relatorio_Chaves_${dataAtual.replace(/\//g, '-')}.pdf`;
+      
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      
+      // Pequeno delay para garantir que o link está no DOM
+      link.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }, 200);
+
     } catch (error) {
-      console.error("Erro ao gerar PDF:", error);
-      alert("Erro ao gerar PDF. Verifique se o navegador deu permissão de download.");
+      // LOG DE ERRO EXAUSTIVO PARA DEBUG (F12)
+      console.error("--- ERRO NA GERAÇÃO DO PDF ---");
+      console.error("Tipo do Erro:", typeof error);
+      console.dir(error);
+      if (error instanceof Error) {
+        console.error("Nome:", error.name);
+        console.error("Mensagem:", error.message);
+        console.error("Pilha de Erro:", error.stack);
+      }
+      alert("Houve um erro técnico. Verifique o console (F12) e tente novamente em outro navegador ou desktop.");
     } finally {
       setIsGeneratingPDF(false);
     }
