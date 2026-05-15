@@ -13,7 +13,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 // --- CONFIGURAÇÕES E TIPOS ---
@@ -50,6 +50,7 @@ export default function App() {
   const [uhs, setUhs] = useState<UH[]>([]);
   const [editingUh, setEditingUh] = useState<UH | null>(null);
   const [newUhId, setNewUhId] = useState('');
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Efeito para carregar dados
@@ -111,15 +112,25 @@ export default function App() {
   };
 
   const exportToPDF = async () => {
-    if (!gridRef.current) return;
+    if (!gridRef.current || isGeneratingPDF) return;
+
+    setIsGeneratingPDF(true);
+    // Garantir que a página esteja no topo para o html2canvas não capturar com offset errado
+    window.scrollTo(0, 0);
 
     try {
-      // Captura a grade com escala alta para nitidez no PDF
+      // Pequeno atraso para garantir que qualquer animação tenha terminado
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       const canvas = await html2canvas(gridRef.current, {
-        scale: 3,
+        scale: 2, // 2 é mais estável para evitar estouro de memória
         useCORS: true,
         backgroundColor: '#ffffff',
-        logging: false
+        logging: false,
+        windowWidth: gridRef.current.scrollWidth,
+        windowHeight: gridRef.current.scrollHeight,
+        x: 0,
+        y: 0
       });
 
       const imgData = canvas.toDataURL('image/png');
@@ -142,11 +153,11 @@ export default function App() {
       pdf.text(`TURNO: DIURNO`, 10, 32);
       pdf.text(`DATA: ${dataAtual}`, pageWidth - 10, 32, { align: 'right' });
 
-      // Desenha a imagem da grade (centralizada e com bordas nítidas)
+      // Desenha a imagem da grade
       pdf.addImage(imgData, 'PNG', 10, 40, imgWidth, imgHeight);
 
-      // Rodapé de Observações (As 3 linhas nítidas para escrita manual)
-      const footerY = 45 + imgHeight;
+      // Rodapé de Observações
+      const footerY = Math.min(45 + imgHeight, pageHeight - 50);
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.text('OBS:', 10, footerY);
@@ -162,8 +173,10 @@ export default function App() {
 
       pdf.save(`Controle_Chaves_${dataAtual.replace(/\//g, '-')}.pdf`);
     } catch (error) {
-      console.error(error);
-      alert("Houve um erro ao gerar o relatório. Tente novamente.");
+      console.error("Erro ao gerar PDF:", error);
+      alert("Erro ao gerar PDF. Verifique se o navegador deu permissão de download.");
+    } finally {
+      setIsGeneratingPDF(false);
     }
   };
 
@@ -180,13 +193,14 @@ export default function App() {
     <div className="min-h-screen bg-slate-100 font-sans selection:bg-blue-200">
       
       {/* BOTÃO FIXO NO TOPO - REQUISITO: GERAR RELATÓRIO PDF */}
-      <div className="sticky top-0 z-40 bg-white/9 worst-backdrop-blur shadow-sm border-b border-gray-200 py-4 px-6 flex justify-center">
+      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-200 py-4 px-6 flex justify-center">
         <button 
           onClick={exportToPDF}
-          className="group flex items-center gap-3 px-12 py-4 bg-red-600 text-white rounded-full font-black uppercase tracking-widest text-sm hover:bg-black transition-all shadow-xl hover:shadow-2xl active:scale-95"
+          disabled={isGeneratingPDF}
+          className={`group flex items-center gap-3 px-12 py-4 bg-red-600 text-white rounded-full font-black uppercase tracking-widest text-sm transition-all shadow-xl hover:shadow-2xl active:scale-95 ${isGeneratingPDF ? 'opacity-50 cursor-not-allowed' : 'hover:bg-black'}`}
         >
-          <Download className="w-5 h-5 group-hover:animate-bounce" />
-          Gerar Relatório PDF
+          <Download className={`w-5 h-5 ${isGeneratingPDF ? 'animate-spin' : 'group-hover:animate-bounce'}`} />
+          {isGeneratingPDF ? 'Gerando...' : 'Gerar Relatório PDF'}
         </button>
       </div>
 
@@ -242,19 +256,19 @@ export default function App() {
                 {uh.id}
               </span>
               
-              {/* Marcadores S e R */}
-              <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 items-end pointer-events-none scale-[0.8] origin-top-right z-20">
+              {/* Marcadores S (Canto Inferior Direito) e R (Canto Superior Esquerdo) */}
+              <div className="absolute inset-1.5 pointer-events-none z-20">
+                {uh.reservaHoje && (
+                  <div className="absolute top-0 left-0 w-8 h-8 bg-white text-blue-700 text-[10px] font-black flex items-center justify-center rounded-full border-[3px] border-blue-700 shadow-md transform -translate-x-1 -translate-y-1" title="Reserva (Entrada)">
+                    R
+                  </div>
+                )}
                 {uh.saidaHoje && (
-                  <div className="relative w-8 h-8 flex items-center justify-center drop-shadow-md" title="Saída">
+                  <div className="absolute bottom-0 right-0 w-8 h-8 flex items-center justify-center drop-shadow-md transform translate-x-1 translate-y-1" title="Saída (Checkout)">
                     <svg viewBox="0 0 24 24" className="absolute inset-0 w-full h-full text-yellow-400">
                       <path fill="currentColor" stroke="black" strokeWidth="3" d="M12 2L2 20h20L12 2z" />
                     </svg>
                     <span className="relative z-10 text-[10px] font-black text-black mt-1">S</span>
-                  </div>
-                )}
-                {uh.reservaHoje && (
-                  <div className="w-8 h-8 bg-white text-blue-700 text-[10px] font-black flex items-center justify-center rounded-full border-[3px] border-blue-700 shadow-md" title="Reserva">
-                    R
                   </div>
                 )}
               </div>
