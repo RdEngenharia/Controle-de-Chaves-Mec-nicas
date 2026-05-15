@@ -139,23 +139,67 @@ export default function App() {
             body { background: white !important; }
             .grid { 
               display: grid !important; 
-              grid-template-columns: repeat(7, 1fr) !important; 
-              gap: 8px !important; 
+              grid-template-columns: repeat(8, 1fr) !important; 
+              gap: 10px !important; 
               width: 100% !important;
             }
             .uh-card {
               border: 1px solid #000000 !important;
-              border-radius: 4px !important;
+              border-radius: 6px !important;
               box-shadow: none !important;
-              padding: 5px !important;
+              padding: 4px !important;
               aspect-ratio: 1/1 !important;
               position: relative !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
             }
             .uh-card span {
-              font-size: 14px !important;
+              font-size: 15px !important;
+              font-weight: 800 !important;
             }
-            /* Garante que SVGs herdem cores sólidas e tenham tamanho pequeno */
-            svg { color: black !important; fill: none !important; width: 14px !important; height: 14px !important; }
+            /* Marcador Reserva (R) */
+            .marker-r {
+              position: absolute !important;
+              top: -1px !important;
+              left: -1px !important;
+              width: 22px !important;
+              height: 22px !important;
+              background-color: white !important;
+              border: 2px solid #1d4ed8 !important;
+              border-radius: 50% !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              font-size: 12px !important;
+              font-weight: 900 !important;
+              color: #1d4ed8 !important;
+              z-index: 10 !important;
+            }
+            /* Marcador Saída (S) - Círculo Amarelo */
+            .marker-s {
+              position: absolute !important;
+              bottom: -1px !important;
+              right: -1px !important;
+              width: 28px !important;
+              height: 28px !important;
+              background-color: #facc15 !important;
+              border: 2px solid #000000 !important;
+              border-radius: 50% !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              z-index: 10 !important;
+              color: #000000 !important;
+              font-family: Arial, sans-serif !important;
+              font-weight: 900 !important;
+              font-size: 15px !important;
+              line-height: 1 !important;
+            }
+            .marker-s span {
+              display: block !important;
+              margin-top: 1px !important;
+            }
           `;
           clonedDoc.head.appendChild(safeStyle);
 
@@ -170,15 +214,12 @@ export default function App() {
             node.style.transition = 'none';
             node.style.animation = 'none';
 
-            // Correção específica para SVGs e seus filhos (onde o erro ocorria)
+            // Remove ou limpa SVGs para evitar erro de cor oklch
             if (node.tagName.toLowerCase() === 'svg' || node.ownerSVGElement) {
               const stroke = node.getAttribute('stroke');
               const fill = node.getAttribute('fill');
-              
               if (stroke && stroke.includes('oklch')) node.setAttribute('stroke', '#000000');
-              if (fill && fill.includes('oklch')) node.setAttribute('fill', 'none');
-              
-              // Remove filtros de SVG
+              if (fill && fill.includes('oklch')) node.setAttribute('fill', '#000000');
               node.removeAttribute('filter');
             }
           });
@@ -337,16 +378,13 @@ export default function App() {
               {/* Marcadores S (Canto Inferior Direito) e R (Canto Superior Esquerdo) */}
               <div className="absolute inset-1.5 pointer-events-none z-20">
                 {uh.reservaHoje && (
-                  <div className="absolute top-0 left-0 w-8 h-8 bg-white text-blue-700 text-[10px] font-black flex items-center justify-center rounded-full border-[3px] border-blue-700 shadow-md transform -translate-x-1 -translate-y-1" title="Reserva (Entrada)">
+                  <div className="marker-r absolute top-0 left-0 w-8 h-8 bg-white text-blue-700 text-[10px] font-black flex items-center justify-center rounded-full border-[3px] border-blue-700 shadow-md transform -translate-x-1 -translate-y-1" title="Reserva (Entrada)">
                     R
                   </div>
                 )}
                 {uh.saidaHoje && (
-                  <div className="absolute bottom-0 right-0 w-8 h-8 flex items-center justify-center drop-shadow-md transform translate-x-1 translate-y-1" title="Saída (Checkout)">
-                    <svg viewBox="0 0 24 24" className="absolute inset-0 w-full h-full text-yellow-400">
-                      <path fill="currentColor" stroke="black" strokeWidth="3" d="M12 2L2 20h20L12 2z" />
-                    </svg>
-                    <span className="relative z-10 text-[10px] font-black text-black mt-1">S</span>
+                  <div className="marker-s absolute bottom-0 right-0 w-8 h-8 bg-yellow-400 text-black text-xs font-black flex items-center justify-center rounded-full border-2 border-black shadow-md transform translate-x-1 translate-y-1" title="Saída (Checkout)">
+                    <span className="leading-none mt-0.5">S</span>
                   </div>
                 )}
               </div>
