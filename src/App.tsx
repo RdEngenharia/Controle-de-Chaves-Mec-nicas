@@ -139,15 +139,15 @@ export default function App() {
             body { background: white !important; }
             .grid { 
               display: grid !important; 
-              grid-template-columns: repeat(8, 1fr) !important; 
-              gap: 10px !important; 
+              grid-template-columns: repeat(10, 1fr) !important; 
+              gap: 8px !important; 
               width: 100% !important;
             }
             .uh-card {
               border: 1px solid #000000 !important;
               border-radius: 6px !important;
               box-shadow: none !important;
-              padding: 4px !important;
+              padding: 2px !important;
               aspect-ratio: 1/1 !important;
               position: relative !important;
               display: flex !important;
@@ -155,45 +155,45 @@ export default function App() {
               justify-content: center !important;
             }
             .uh-card span {
-              font-size: 15px !important;
+              font-size: 12px !important;
               font-weight: 800 !important;
             }
-            /* Marcador Reserva (R) */
+            /* Marcador Reserva (R) - Apenas a Letra */
             .marker-r {
               position: absolute !important;
-              top: -1px !important;
-              left: -1px !important;
-              width: 22px !important;
-              height: 22px !important;
-              background-color: white !important;
-              border: 2px solid #1d4ed8 !important;
-              border-radius: 50% !important;
+              top: 2px !important;
+              left: 2px !important;
+              background: none !important;
+              border: none !important;
+              width: auto !important;
+              height: auto !important;
               display: flex !important;
               align-items: center !important;
               justify-content: center !important;
-              font-size: 12px !important;
+              font-size: 16px !important;
               font-weight: 900 !important;
-              color: #1d4ed8 !important;
+              color: #000000 !important;
               z-index: 10 !important;
-              line-height: 0 !important;
+              line-height: 1 !important;
               padding: 0 !important;
+              text-shadow: 2px 2px 0px #fff, -1px -1px 0px #fff !important;
             }
             .marker-r span {
               display: block !important;
               margin: 0 !important;
               padding: 0 !important;
               line-height: 1 !important;
+              font-weight: 900 !important;
             }
-            /* Marcador Saída (S) - Círculo Amarelo */
+            /* Marcador Saída (S) - Letra com Sombra para Visibilidade */
             .marker-s {
               position: absolute !important;
-              bottom: -1px !important;
-              right: -1px !important;
-              width: 28px !important;
-              height: 28px !important;
-              background-color: #facc15 !important;
-              border: 2px solid #000000 !important;
-              border-radius: 50% !important;
+              bottom: 2px !important;
+              right: 2px !important;
+              background: none !important;
+              border: none !important;
+              width: auto !important;
+              height: auto !important;
               display: flex !important;
               align-items: center !important;
               justify-content: center !important;
@@ -201,20 +201,64 @@ export default function App() {
               color: #000000 !important;
               font-family: Arial, sans-serif !important;
               font-weight: 900 !important;
-              font-size: 15px !important;
-              line-height: 0 !important;
+              font-size: 16px !important;
+              line-height: 1 !important;
               padding: 0 !important;
+              text-shadow: 1px 1px 1px #000, -2px -2px 0px #fff, 2px 2px 0px #fff !important;
             }
             .marker-s span {
               display: block !important;
               margin: 0 !important;
               padding: 0 !important;
               line-height: 1 !important;
+              font-weight: 900 !important;
+            }
+            /* Utilitário para a Legenda no PDF */
+            .pdf-legend {
+              margin-top: 30px !important;
+              padding-top: 15px !important;
+              border-top: 2px solid #000 !important;
+              display: flex !important;
+              flex-wrap: wrap !important;
+              justify-content: center !important;
+              gap: 25px !important;
+              width: 100% !important;
+              padding-bottom: 20px !important;
+            }
+            .legend-item {
+              display: flex !important;
+              align-items: center !important;
+              gap: 10px !important;
+              font-size: 12px !important;
+              font-weight: bold !important;
+              text-transform: uppercase !important;
+              color: #000 !important;
+            }
+            .legend-box {
+              width: 16px !important;
+              height: 16px !important;
+              border: 1px solid black !important;
             }
           `;
           clonedDoc.head.appendChild(safeStyle);
 
-          // 2. HIGIENIZAÇÃO MANUAL PARA SEGURANÇA ADICIONAL
+          // 2. INJETA LEGENDA ABAIXO DA GRADE
+          const grid = clonedDoc.querySelector('.grid');
+          if (grid) {
+            const legend = clonedDoc.createElement('div');
+            legend.className = 'pdf-legend';
+            legend.innerHTML = `
+              <div class="legend-item"><div class="legend-box" style="background:#e74c3c"></div> Ocupado</div>
+              <div class="legend-item"><div class="legend-box" style="background:#f1c40f"></div> Limpeza</div>
+              <div class="legend-item"><div class="legend-box" style="background:#3498db"></div> Manutenção</div>
+              <div class="legend-item"><div class="legend-box" style="background:#ffffff"></div> Disponível</div>
+              <div class="legend-item" style="margin-left: 20px"><span style="color:#000000; font-size:16px; font-weight:900">R</span> Reserva/Entrada</div>
+              <div class="legend-item"><span style="color:#000000; font-size:16px; font-weight:900; text-shadow: 1px 1px 1px #000">S</span> Saída/Checkout</div>
+            `;
+            grid.parentNode?.appendChild(legend);
+          }
+
+          // 3. HIGIENIZAÇÃO MANUAL PARA SEGURANÇA ADICIONAL
           const allElements = clonedDoc.querySelectorAll('*');
           allElements.forEach((el) => {
             const node = el as HTMLElement;
@@ -389,12 +433,12 @@ export default function App() {
               {/* Marcadores S (Canto Inferior Direito) e R (Canto Superior Esquerdo) */}
               <div className="absolute inset-1.5 pointer-events-none z-20">
                 {uh.reservaHoje && (
-                  <div className="marker-r absolute top-0 left-0 w-8 h-8 bg-white text-blue-700 text-[10px] font-black flex items-center justify-center rounded-full border-[3px] border-blue-700 shadow-md transform -translate-x-1 -translate-y-1" title="Reserva (Entrada)">
+                  <div className="absolute top-0 left-0 text-black text-base font-black flex items-center justify-center filter drop-shadow-[1px_1px_0px_white]" title="Reserva (Entrada)">
                     <span className="leading-none">R</span>
                   </div>
                 )}
                 {uh.saidaHoje && (
-                  <div className="marker-s absolute bottom-0 right-0 w-8 h-8 bg-yellow-400 text-black text-xs font-black flex items-center justify-center rounded-full border-2 border-black shadow-md transform translate-x-1 translate-y-1" title="Saída (Checkout)">
+                  <div className="absolute bottom-0 right-0 text-black text-base font-black flex items-center justify-center filter drop-shadow-[1px_1px_0px_white] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.5)]" title="Saída (Checkout)">
                     <span className="leading-none">S</span>
                   </div>
                 )}
